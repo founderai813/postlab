@@ -532,12 +532,6 @@
       <input type="text" id="brandName" placeholder="例：@postlab.ai" value="@postlab.ai" />
     </div>
 
-    <div class="field-group">
-      <label>🔑 Gemini API Key</label>
-      <input type="password" id="apiKey" placeholder="AIza..." />
-      <span style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Key 不會被儲存，僅在此頁面使用</span>
-    </div>
-
     <div id="errorMsg" class="error-msg"></div>
 
     <button class="gen-btn" id="genBtn" onclick="generate()">
@@ -602,11 +596,12 @@ document.querySelectorAll('#colorSwatches .swatch').forEach(sw => {
 });
 
 // ── Generate ──
+// ⚠️ 部署 Cloudflare Worker 後，把下面的 URL 換成你的 Worker URL
+const WORKER_URL = 'https://postlab-api.YOUR_SUBDOMAIN.workers.dev';
+
 async function generate() {
   const topic = document.getElementById('topic').value.trim();
-  const apiKey = document.getElementById('apiKey').value.trim();
   if (!topic) { showError('請先輸入關鍵字或主題！'); return; }
-  if (!apiKey) { showError('請輸入 Gemini API Key！'); return; }
   hideError();
 
   const btn = document.getElementById('genBtn');
@@ -643,17 +638,14 @@ async function generate() {
 - 用繁體中文`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
-        })
-      }
-    );
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
+      })
+    });
 
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
