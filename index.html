@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostLab · FuturestarAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel: #13131a;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c5cfc;
+    --accent2: #fc5c9c;
+    --accent3: #5cfcdc;
+    --text: #f0f0ff;
+    --muted: #7070a0;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.9);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .logo-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+  header h1 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text); }
+  header span { color: var(--accent); }
+
+  /* ── Layout ── */
+  .app {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    height: calc(100vh - 61px);
+  }
+
+  /* ── Left Panel ── */
+  .panel {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .field-group { display: flex; flex-direction: column; gap: 8px; }
+
+  label { font-size: 0.85rem; color: var(--muted); }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+  textarea { min-height: 72px; }
+
+  select option { background: #1a1a24; }
+
+  /* Slide count */
+  .slide-count-row {
+    display: flex;
+    gap: 8px;
+  }
+  .count-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .count-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Style chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--card);
+    color: var(--muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip.active {
+    background: rgba(124,92,252,0.2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Color theme */
+  .color-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatch {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .swatch.active::after {
+    content: '✓';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #fff; font-weight: bold;
+  }
+  .swatch.active { border-color: #fff; }
+
+  /* Generate button */
+  .gen-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,92,252,0.4); }
+  .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .gen-btn .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .gen-btn.loading .spinner { display: block; }
+  .gen-btn.loading .btn-text { opacity: 0.6; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Right: Preview ── */
+  .preview-area {
+    background: var(--bg);
+    overflow-y: auto;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .preview-header {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .preview-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .preview-header .slide-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .nav-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    transition: all 0.15s;
+  }
+  .nav-btn:hover { background: var(--accent); border-color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* IG Slide */
+  .ig-slide-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .ig-slide {
+    width: 400px;
+    height: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+  }
+
+  .slide-bg {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    padding: 28px;
+  }
+
+  .slide-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);
+  }
+
+  .slide-index-badge {
+    position: absolute;
+    top: 18px; right: 18px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.05em;
+  }
+
+  .slide-content { position: relative; z-index: 1; }
+
+  .slide-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+  }
+
+  .slide-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: #fff;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  .slide-body {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.85);
+  }
+
+  .slide-footer {
+    position: absolute;
+    bottom: 16px; left: 28px;
+    right: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1;
+  }
+
+  .slide-brand {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.5);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .slide-dots {
+    display: flex; gap: 5px;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.3);
+    transition: all 0.2s;
+  }
+  .dot.active {
+    width: 18px;
+    background: #fff;
+  }
+
+  /* Text panel below slide */
+  .slide-text-panel {
+    width: 400px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .text-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .editable-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text);
+    margin-bottom: 6px;
+    border: none;
+    background: none;
+    width: 100%;
+    outline: none;
+    resize: none;
+    line-height: 1.4;
+  }
+  .editable-body {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.6;
+    border: none;
+    background: none;
+    width: 100%;
+    outline: none;
+    resize: none;
+  }
+
+  /* All slides strip */
+  .all-slides-strip {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 4px 2px 8px;
+    max-width: 900px;
+    width: 100%;
+  }
+  .strip-thumb {
+    width: 80px; height: 80px;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .strip-thumb.active { border-color: var(--accent); }
+  .strip-thumb:hover { border-color: var(--muted); }
+  .strip-thumb .thumb-inner {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    padding: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .strip-thumb .thumb-num {
+    position: absolute;
+    top: 4px; left: 6px;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.7);
+    font-weight: 700;
+    z-index: 2;
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    height: 100%;
+    min-height: 400px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .empty-icon { font-size: 3rem; opacity: 0.3; }
+  .empty-state p { font-size: 0.9rem; max-width: 280px; line-height: 1.6; }
+
+  /* Error */
+  .error-msg {
+    background: rgba(252,92,92,0.1);
+    border: 1px solid rgba(252,92,92,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: #fc5c5c;
+    display: none;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+    .panel { border-right: none; border-bottom: 1px solid var(--border); }
+    .preview-area { padding: 20px 16px; }
+    .ig-slide, .slide-text-panel { width: min(360px, calc(100vw - 32px)); }
+    .ig-slide { height: min(360px, calc(100vw - 32px)); }
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-dot"></div>
+  <h1>PostLab <span>· FuturestarAI</span></h1>
+</header>
+
+<div class="app">
+
+  <!-- ── Left Panel ── -->
+  <aside class="panel">
+
+    <div>
+      <div class="section-label">📝 主題設定</div>
+      <div class="field-group">
+        <label>關鍵字 / 主題</label>
+        <input type="text" id="topic" placeholder="例：早起習慣、副業入門、斷捨離…" />
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label>補充說明（選填）</label>
+      <textarea id="extra" placeholder="例：針對上班族、輕鬆語氣、不要說教…"></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">📐 輪播張數</div>
+      <div class="slide-count-row" id="countBtns">
+        <div class="count-btn active" data-val="3">3 張</div>
+        <div class="count-btn" data-val="5">5 張</div>
+        <div class="count-btn" data-val="7">7 張</div>
+        <div class="count-btn" data-val="10">10 張</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">🎨 內容風格</div>
+      <div class="chips" id="styleChips">
+        <div class="chip active" data-val="教學知識型">📚 教學知識</div>
+        <div class="chip" data-val="勵志動機型">🔥 勵志動機</div>
+        <div class="chip" data-val="輕鬆幽默型">😄 輕鬆幽默</div>
+        <div class="chip" data-val="品牌故事型">✨ 品牌故事</div>
+        <div class="chip" data-val="產品介紹型">🛍️ 產品介紹</div>
+        <div class="chip" data-val="問答互動型">💬 問答互動</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">🌈 視覺主題色</div>
+      <div class="color-swatches" id="colorSwatches">
+        <div class="swatch active" data-key="purple" style="background: linear-gradient(135deg,#7c5cfc,#fc5c9c)" title="紫粉"></div>
+        <div class="swatch" data-key="ocean" style="background: linear-gradient(135deg,#0ea5e9,#6366f1)" title="海藍"></div>
+        <div class="swatch" data-key="forest" style="background: linear-gradient(135deg,#22c55e,#06b6d4)" title="森綠"></div>
+        <div class="swatch" data-key="sunset" style="background: linear-gradient(135deg,#f97316,#ec4899)" title="夕陽"></div>
+        <div class="swatch" data-key="gold" style="background: linear-gradient(135deg,#f59e0b,#ef4444)" title="金紅"></div>
+        <div class="swatch" data-key="mono" style="background: linear-gradient(135deg,#374151,#111827)" title="黑白"></div>
+        <div class="swatch" data-key="rose" style="background: linear-gradient(135deg,#fb7185,#f9a8d4)" title="玫瑰"></div>
+        <div class="swatch" data-key="neon" style="background: linear-gradient(135deg,#5cfcdc,#7c5cfc)" title="霓虹"></div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label>品牌名稱（顯示在底部）</label>
+      <input type="text" id="brandName" placeholder="例：@postlab.ai" value="@postlab.ai" />
+    </div>
+
+    <div class="field-group">
+      <label>🔑 Gemini API Key</label>
+      <input type="password" id="apiKey" placeholder="AIza..." />
+      <span style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Key 不會被儲存，僅在此頁面使用</span>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <button class="gen-btn" id="genBtn" onclick="generate()">
+      <div class="spinner"></div>
+      <span class="btn-text">✦ 立即產生輪播內容</span>
+    </button>
+
+  </aside>
+
+  <!-- ── Right Preview ── -->
+  <main class="preview-area" id="previewArea">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🎠</div>
+      <p>設定好主題和選項後，點擊「立即產生」就會在這裡出現 IG 輪播預覽</p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ── State ──
+let slides = [];
+let currentSlide = 0;
+let selectedCount = 3;
+let selectedStyle = '教學知識型';
+let selectedColor = 'purple';
+
+const colorMap = {
+  purple: 'linear-gradient(135deg,#7c5cfc,#fc5c9c)',
+  ocean:  'linear-gradient(135deg,#0ea5e9,#6366f1)',
+  forest: 'linear-gradient(135deg,#22c55e,#06b6d4)',
+  sunset: 'linear-gradient(135deg,#f97316,#ec4899)',
+  gold:   'linear-gradient(135deg,#f59e0b,#ef4444)',
+  mono:   'linear-gradient(135deg,#374151,#111827)',
+  rose:   'linear-gradient(135deg,#fb7185,#f9a8d4)',
+  neon:   'linear-gradient(135deg,#5cfcdc,#7c5cfc)',
+};
+
+// ── UI Bindings ──
+document.querySelectorAll('#countBtns .count-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#countBtns .count-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedCount = parseInt(btn.dataset.val);
+  });
+});
+
+document.querySelectorAll('#styleChips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('#styleChips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedStyle = chip.dataset.val;
+  });
+});
+
+document.querySelectorAll('#colorSwatches .swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('#colorSwatches .swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    selectedColor = sw.dataset.key;
+  });
+});
+
+// ── Generate ──
+async function generate() {
+  const topic = document.getElementById('topic').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!topic) { showError('請先輸入關鍵字或主題！'); return; }
+  if (!apiKey) { showError('請輸入 Gemini API Key！'); return; }
+  hideError();
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-text').textContent = 'AI 思考中…';
+
+  const extra = document.getElementById('extra').value.trim();
+  const brand = document.getElementById('brandName').value.trim() || '@futurestarai';
+
+  const prompt = `你是一位專業的 Instagram 內容策略師，擅長設計高互動的輪播貼文。
+
+請根據以下需求，產生 ${selectedCount} 張 IG 輪播的文案內容：
+
+主題：${topic}
+補充說明：${extra || '無'}
+內容風格：${selectedStyle}
+張數：${selectedCount}
+
+輸出格式：只回傳 JSON 陣列，不要有任何說明文字或 markdown，格式如下：
+[
+  {
+    "tag": "短標籤（2-4字）",
+    "title": "吸睛標題（10-20字）",
+    "body": "內文說明（40-80字，簡潔有力）"
+  },
+  ...
+]
+
+注意：
+- 第一張是「封面」，最吸引人、直接破題
+- 最後一張是「CTA」，呼籲追蹤/留言/分享
+- 每張要有獨立重點，不重複
+- 用繁體中文`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.8, maxOutputTokens: 2048 }
+        })
+      }
+    );
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    raw = raw.replace(/```json|```/g, '').trim();
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (match) raw = match[0];
+
+    slides = JSON.parse(raw);
+    currentSlide = 0;
+
+    renderPreview(brand);
+
+  } catch (e) {
+    showError('產生失敗，請重試。' + (e.message || ''));
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-text').textContent = '✦ 立即產生輪播內容';
+  }
+}
+
+// ── Render ──
+function renderPreview(brand) {
+  brand = brand || document.getElementById('brandName').value.trim() || '@futurestarai';
+  const gradient = colorMap[selectedColor];
+  const area = document.getElementById('previewArea');
+
+  area.innerHTML = `
+    <div style="width:100%;max-width:900px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div style="font-family:'Syne',sans-serif;font-size:0.85rem;color:var(--muted);letter-spacing:0.05em;">
+        IG 輪播預覽 · 共 ${slides.length} 張
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="nav-btn" id="prevBtn" onclick="goSlide(-1)">‹</button>
+        <span style="font-size:0.85rem;color:var(--muted);" id="slideCounter">1 / ${slides.length}</span>
+        <button class="nav-btn" id="nextBtn" onclick="goSlide(1)">›</button>
+      </div>
+    </div>
+
+    <div class="all-slides-strip" id="thumbStrip"></div>
+
+    <div class="ig-slide-wrapper" id="slideWrapper"></div>
+  `;
+
+  // Thumbnails
+  const strip = document.getElementById('thumbStrip');
+  slides.forEach((s, i) => {
+    const t = document.createElement('div');
+    t.className = 'strip-thumb' + (i === 0 ? ' active' : '');
+    t.innerHTML = `
+      <div style="position:absolute;inset:0;background:${gradient};"></div>
+      <div class="thumb-num">${i+1}</div>
+      <div class="thumb-inner">${s.title.slice(0,12)}…</div>
+    `;
+    t.onclick = () => { currentSlide = i; updateSlide(); };
+    strip.appendChild(t);
+  });
+
+  updateSlide();
+}
+
+function updateSlide() {
+  const s = slides[currentSlide];
+  const gradient = colorMap[selectedColor];
+  const brand = document.getElementById('brandName').value.trim() || '@futurestarai';
+
+  // Dots
+  const dotsHTML = slides.map((_, i) =>
+    `<div class="dot${i === currentSlide ? ' active' : ''}"></div>`
+  ).join('');
+
+  // Thumbs
+  document.querySelectorAll('.strip-thumb').forEach((t, i) => {
+    t.classList.toggle('active', i === currentSlide);
+  });
+
+  // Counter
+  const counter = document.getElementById('slideCounter');
+  if (counter) counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+
+  // Nav
+  const prev = document.getElementById('prevBtn');
+  const next = document.getElementById('nextBtn');
+  if (prev) prev.disabled = currentSlide === 0;
+  if (next) next.disabled = currentSlide === slides.length - 1;
+
+  // Main slide
+  const wrapper = document.getElementById('slideWrapper');
+  if (!wrapper) return;
+
+  wrapper.innerHTML = `
+    <div class="ig-slide">
+      <div class="slide-bg" style="background:${gradient};">
+        <div class="slide-overlay"></div>
+        <div class="slide-index-badge">${currentSlide + 1} / ${slides.length}</div>
+        <div class="slide-content">
+          <div class="slide-tag">${s.tag}</div>
+          <div class="slide-title" id="liveTitle">${s.title}</div>
+          <div class="slide-body" id="liveBody">${s.body}</div>
+        </div>
+        <div class="slide-footer">
+          <div class="slide-brand">${brand}</div>
+          <div class="slide-dots">${dotsHTML}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-text-panel">
+      <div class="text-label">✏️ 可直接編輯內容</div>
+      <textarea class="editable-title" rows="2" id="editTitle" oninput="syncEdit('title',this.value)">${s.title}</textarea>
+      <textarea class="editable-body" rows="4" id="editBody" oninput="syncEdit('body',this.value)">${s.body}</textarea>
+    </div>
+  `;
+}
+
+function syncEdit(field, val) {
+  slides[currentSlide][field] = val;
+  if (field === 'title') {
+    const el = document.getElementById('liveTitle');
+    if (el) el.textContent = val;
+  } else {
+    const el = document.getElementById('liveBody');
+    if (el) el.textContent = val;
+  }
+}
+
+function goSlide(dir) {
+  const next = currentSlide + dir;
+  if (next < 0 || next >= slides.length) return;
+  currentSlide = next;
+  updateSlide();
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+// Enter to generate
+document.getElementById('topic').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generate();
+});
+</script>
+</body>
+</html>
