@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PostLab — AI 驅動的 Instagram 輪播貼文產生器，30 秒產出吸睛文案與視覺排版">
+<meta property="og:title" content="PostLab · FuturestarAI">
+<meta property="og:description" content="AI 驅動的 IG 輪播產生器，輸入主題就能自動產出多張輪播文案">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PostLab · FuturestarAI">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎠</text></svg>">
 <title>PostLab · FuturestarAI</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -462,6 +469,59 @@
     height: 1px;
     background: var(--border);
   }
+
+  /* Toast 提示 */
+  .toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-size: 0.9rem;
+    color: var(--text);
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* 工具列按鈕 */
+  .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .action-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .action-btn.primary:hover { opacity: 0.85; }
+
+  /* 手機版：產生按鈕黏底 */
+  @media (max-width: 800px) {
+    .gen-btn {
+      position: sticky;
+      bottom: 0;
+      z-index: 50;
+    }
+  }
 </style>
 </head>
 <body>
@@ -551,7 +611,23 @@
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+// ── 工具函式 ──
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function showToast(msg, ms) {
+  ms = ms || 2000;
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, ms);
+}
+
 // ── State ──
 let slides = [];
 let currentSlide = 0;
@@ -660,7 +736,12 @@ async function generate() {
     renderPreview(brand);
 
   } catch (e) {
-    showError('產生失敗，請重試。' + (e.message || ''));
+    const msg = e.message || '';
+    if (msg.includes('Failed to fetch')) showError('網路連線失敗，請檢查網路後重試');
+    else if (msg.includes('Too many requests')) showError('請求太頻繁，請等一分鐘後再試');
+    else if (msg.includes('API key not configured')) showError('伺服器尚未設定 API Key，請聯絡管理員');
+    else if (msg.includes('Forbidden')) showError('沒有存取權限');
+    else showError('產生失敗：' + msg);
     console.error(e);
   } finally {
     btn.disabled = false;
@@ -676,7 +757,7 @@ function renderPreview(brand) {
   const area = document.getElementById('previewArea');
 
   area.innerHTML = `
-    <div style="width:100%;max-width:900px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <div style="width:100%;max-width:900px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px;">
       <div style="font-family:'Syne',sans-serif;font-size:0.85rem;color:var(--muted);letter-spacing:0.05em;">
         IG 輪播預覽 · 共 ${slides.length} 張
       </div>
@@ -685,6 +766,13 @@ function renderPreview(brand) {
         <span style="font-size:0.85rem;color:var(--muted);" id="slideCounter">1 / ${slides.length}</span>
         <button class="nav-btn" id="nextBtn" onclick="goSlide(1)">›</button>
       </div>
+    </div>
+
+    <div class="toolbar-actions" style="width:100%;max-width:900px;">
+      <button class="action-btn primary" onclick="regenerate()">🔄 重新產生</button>
+      <button class="action-btn" onclick="copyAllText()">📋 複製文案</button>
+      <button class="action-btn" onclick="exportCurrent()">⬇️ 下載此張</button>
+      <button class="action-btn" onclick="exportAll()">📦 下載全部</button>
     </div>
 
     <div class="all-slides-strip" id="thumbStrip"></div>
@@ -700,7 +788,7 @@ function renderPreview(brand) {
     t.innerHTML = `
       <div style="position:absolute;inset:0;background:${gradient};"></div>
       <div class="thumb-num">${i+1}</div>
-      <div class="thumb-inner">${s.title.slice(0,12)}…</div>
+      <div class="thumb-inner">${escapeHtml(s.title.slice(0,12))}…</div>
     `;
     t.onclick = () => { currentSlide = i; updateSlide(); };
     strip.appendChild(t);
@@ -744,9 +832,9 @@ function updateSlide() {
         <div class="slide-overlay"></div>
         <div class="slide-index-badge">${currentSlide + 1} / ${slides.length}</div>
         <div class="slide-content">
-          <div class="slide-tag">${s.tag}</div>
-          <div class="slide-title" id="liveTitle">${s.title}</div>
-          <div class="slide-body" id="liveBody">${s.body}</div>
+          <div class="slide-tag">${escapeHtml(s.tag)}</div>
+          <div class="slide-title" id="liveTitle">${escapeHtml(s.title)}</div>
+          <div class="slide-body" id="liveBody">${escapeHtml(s.body)}</div>
         </div>
         <div class="slide-footer">
           <div class="slide-brand">${brand}</div>
@@ -757,8 +845,8 @@ function updateSlide() {
 
     <div class="slide-text-panel">
       <div class="text-label">✏️ 可直接編輯內容</div>
-      <textarea class="editable-title" rows="2" id="editTitle" oninput="syncEdit('title',this.value)">${s.title}</textarea>
-      <textarea class="editable-body" rows="4" id="editBody" oninput="syncEdit('body',this.value)">${s.body}</textarea>
+      <textarea class="editable-title" rows="2" id="editTitle" oninput="syncEdit('title',this.value)">${escapeHtml(s.title)}</textarea>
+      <textarea class="editable-body" rows="4" id="editBody" oninput="syncEdit('body',this.value)">${escapeHtml(s.body)}</textarea>
     </div>
   `;
 }
@@ -794,6 +882,85 @@ function hideError() {
 document.getElementById('topic').addEventListener('keydown', e => {
   if (e.key === 'Enter') generate();
 });
+
+// ── 鍵盤左右鍵切換 ──
+document.addEventListener('keydown', e => {
+  if (slides.length === 0) return;
+  if (e.key === 'ArrowLeft') goSlide(-1);
+  if (e.key === 'ArrowRight') goSlide(1);
+});
+
+// ── 手機觸控滑動 ──
+let touchStartX = 0;
+document.getElementById('previewArea').addEventListener('touchstart', e => {
+  touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+document.getElementById('previewArea').addEventListener('touchend', e => {
+  if (slides.length === 0) return;
+  const diff = e.changedTouches[0].screenX - touchStartX;
+  if (Math.abs(diff) > 50) {
+    if (diff < 0) goSlide(1);
+    else goSlide(-1);
+  }
+}, { passive: true });
+
+// ── 匯出：下載目前這張 ──
+async function exportCurrent() {
+  const el = document.querySelector('.ig-slide');
+  if (!el) return;
+  showToast('正在產生圖片…', 3000);
+  await document.fonts.ready;
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: null });
+  const link = document.createElement('a');
+  link.download = 'postlab-slide-' + (currentSlide + 1) + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('已下載第 ' + (currentSlide + 1) + ' 張！');
+}
+
+// ── 匯出：下載全部 ──
+async function exportAll() {
+  if (slides.length === 0) return;
+  showToast('正在下載全部 ' + slides.length + ' 張…', 5000);
+  const saved = currentSlide;
+  await document.fonts.ready;
+  for (let i = 0; i < slides.length; i++) {
+    currentSlide = i;
+    updateSlide();
+    await new Promise(function(r){ setTimeout(r, 400); });
+    const el = document.querySelector('.ig-slide');
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: null });
+    const link = document.createElement('a');
+    link.download = 'postlab-slide-' + (i + 1) + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    await new Promise(function(r){ setTimeout(r, 300); });
+  }
+  currentSlide = saved;
+  updateSlide();
+  showToast('全部下載完成！');
+}
+
+// ── 匯出：複製全部文案 ──
+async function copyAllText() {
+  if (slides.length === 0) return;
+  const text = slides.map(function(s, i) {
+    return '【第 ' + (i+1) + ' 張 — ' + s.tag + '】\n' + s.title + '\n\n' + s.body;
+  }).join('\n\n─────────\n\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('文案已複製到剪貼簿！');
+  } catch(e) {
+    showToast('複製失敗，請手動複製');
+  }
+}
+
+// ── 重新產生 ──
+function regenerate() {
+  generate();
+}
 </script>
+
+<div id="toast" class="toast"></div>
 </body>
 </html>
